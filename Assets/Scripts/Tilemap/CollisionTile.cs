@@ -8,7 +8,8 @@ public enum TileCollisionType
     HalfTop,
     HalfBottom,
     SlopeLeft,
-    SlopeRight
+    SlopeRight,
+    OneWay,
 }
 
 [CreateAssetMenu(menuName = "Custom/CollisionTile")]

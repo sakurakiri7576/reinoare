@@ -40,13 +40,19 @@ public class PlayerController : MonoBehaviour
                     {
                         newPosY.y = tile.rect.yMax + size.y * 0.5f;
                         isGrounded = true;
+                        velocity.y = 0;
                     }
-                    velocity.y = 0;
+                    else if (velocity.y > 0)
+                    {
+                        newPosY.y = tile.rect.yMin - size.y * 0.5f;
+                        velocity.y = 0;
+                    }
                 }
             }
             else if (tile.collisionType == TileCollisionType.HalfBottom)
             {
                 Rect rect = new Rect(tile.rect.position, new Vector2(1, 0.5f));
+
                 if (IsColliding(newRectY, rect))
                 {
                     if (velocity.y < 0)
@@ -54,33 +60,98 @@ public class PlayerController : MonoBehaviour
                         newPosY.y = rect.yMax + size.y * 0.5f;
                         isGrounded = true;
                     }
+                    else if (velocity.y > 0)
+                    {
+                        newPosY.y = rect.yMin - size.y * 0.5f;
+                    }
                     velocity.y = 0;
                 }
             }
             else if (tile.collisionType == TileCollisionType.HalfTop)
             {
                 Rect rect = new Rect(tile.rect.position + Vector2.up * 0.5f, new Vector2(1, 0.5f));
+
                 if (IsColliding(newRectY, rect))
                 {
-                    velocity.y = 0;
-                }
-            }
-            else if (tile.collisionType == TileCollisionType.SlopeRight)
-            {
-                if (IsCollidingSlopeRight(newRectY, tile.rect.position))
-                {
-                    newPosY.y = tile.rect.y + (newRectY.center.x - tile.rect.xMin) + size.y * 0.5f;
-                    isGrounded = true;
+                    if (velocity.y < 0)
+                    {
+                        newPosY.y = rect.yMax + size.y * 0.5f;
+                        isGrounded = true;
+                    }
+                    else if (velocity.y > 0)
+                    {
+                        newPosY.y = rect.yMin - size.y * 0.5f;
+                    }
                     velocity.y = 0;
                 }
             }
             else if (tile.collisionType == TileCollisionType.SlopeLeft)
             {
-                if (IsCollidingSlopeLeft(newRectY, tile.rect.position))
+                if (IsColliding(newRectY, tile.rect))
                 {
-                    float localX = newRectY.center.x - tile.rect.xMin;
-                    float slopeY = 1f - localX; // ／の形
-                    newPosY.y = tile.rect.y + slopeY + size.y * 0.5f;
+                    // 天井
+                    if (newRectY.center.y < tile.rect.yMin)
+                    {
+                        newPosY.y = tile.rect.yMin - size.y * 0.5f;
+                        velocity.y = 0;
+                    }
+                    // 地面
+                    else
+                    {
+                        if(velocity.y <= 0)
+                        {
+                            float localX = newRectY.center.x - tile.rect.xMin;
+                            if (localX < 0) localX = 0;
+                            if (localX > 1) localX = 1;
+                            float slopeY = tile.rect.y + (1f - localX);
+                            float footY = newRectY.yMin;
+
+                            if (footY <= slopeY + 0.05f && footY >= slopeY - 0.5f)
+                            {
+                                newPosY.y = slopeY + size.y * 0.5f;
+                                isGrounded = true;
+                                velocity.y = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.SlopeRight)
+            {
+                if (IsColliding(newRectY, tile.rect))
+                {
+                    // 天井
+                    if(newRectY.center.y < tile.rect.yMin)
+                    {
+                        newPosY.y = tile.rect.yMin - size.y * 0.5f;
+                        velocity.y = 0;
+                    }
+                    // 地面
+                    else
+                    {
+                        if(velocity.y <= 0)
+                        {
+                            float localX = newRectY.center.x - tile.rect.xMin;
+                            if (localX < 0) localX = 0;
+                            if (localX > 1) localX = 1;
+                            float slopeY = tile.rect.y + localX;
+                            float footY = newRectY.yMin;
+
+                            if (footY <= slopeY + 0.05f && footY >= slopeY - 0.5f)
+                            {
+                                newPosY.y = slopeY + size.y * 0.5f;
+                                isGrounded = true;
+                                velocity.y = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.OneWay)
+            {
+                if (IsCollidingOneWay(newRectY, tile.rect, velocity))
+                {
+                    newPosY.y = tile.rect.yMax + size.y * 0.5f;
                     isGrounded = true;
                     velocity.y = 0;
                 }
@@ -90,12 +161,64 @@ public class PlayerController : MonoBehaviour
         // X方向移動先を試す
         Vector2 newPosX = new Vector2(pos.x + velocity.x * Time.deltaTime, newPosY.y);
         Rect newRectX = new Rect(newPosX - size * 0.5f, size);
+        // X方向移動先を試す
         foreach (var tile in groundTiles)
         {
-            if (tile.collisionType == TileCollisionType.Solid && IsColliding(newRectX, tile.rect))
+            if (tile.collisionType == TileCollisionType.Solid)
             {
-                newPosX.x = pos.x;
-                velocity.x = 0;
+                if (IsColliding(newRectX, tile.rect))
+                {
+                    newPosX.x = pos.x;
+                    velocity.x = 0;
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.HalfBottom)
+            {
+                Rect rect = new Rect(tile.rect.position, new Vector2(1, 0.5f));
+                if (IsColliding(newRectX, rect))
+                {
+                    newPosX.x = pos.x;
+                    velocity.x = 0;
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.HalfTop)
+            {
+                Rect rect = new Rect(tile.rect.position + Vector2.up * 0.5f, new Vector2(1, 0.5f));
+                if (IsColliding(newRectX, rect))
+                {
+                    newPosX.x = pos.x;
+                    velocity.x = 0;
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.SlopeLeft)
+            {
+                if (IsColliding(newRectX, tile.rect))
+                {
+                    // プレイヤーが左から入ろうとしている場合だけ止める
+                    if (pos.x < tile.rect.xMin && velocity.x > 0 ||
+                        !isGrounded && pos.x > tile.rect.xMax && velocity.x < 0 && newRectY.yMin < tile.rect.yMin)
+                    {
+                        newPosX.x = pos.x;
+                        velocity.x = 0;
+                    }
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.SlopeRight)
+            {
+                if (IsColliding(newRectX, tile.rect))
+                {
+                    // プレイヤーが右から入ろうとしている場合だけ止める
+                    if (pos.x > tile.rect.xMax && velocity.x < 0 ||
+                        !isGrounded && pos.x < tile.rect.xMin && velocity.x > 0 && newRectY.yMin < tile.rect.yMin)
+                    {
+                        newPosX.x = pos.x;
+                        velocity.x = 0;
+                    }
+                }
+            }
+            else if (tile.collisionType == TileCollisionType.OneWay)
+            {
+                // 横からは無視
             }
         }
 
@@ -143,6 +266,22 @@ public class PlayerController : MonoBehaviour
         return false;
     }
 
+    bool IsCollidingOneWay(Rect playerRect, Rect platformRect, Vector2 velocity)
+    {
+        // プレイヤーの足元の位置
+        float playerBottom = playerRect.yMin;
+        float platformTop = platformRect.yMax;
+
+        // 落下中 ＆ 足元がちょうど足場に突っ込んできたときのみ衝突
+        if (velocity.y <= 0 &&
+            playerBottom >= platformTop - 0.05f && // 少し余裕を持たせる
+            playerBottom + velocity.y * Time.deltaTime <= platformTop)
+        {
+            return true;
+        }
+        return false;
+    }
+
     #region InputAction
     public void OnMove(InputAction.CallbackContext context)
     {
@@ -153,7 +292,7 @@ public class PlayerController : MonoBehaviour
     {
         if(context.started)
         {
-            if(isGrounded)
+            if (isGrounded)
             {
                 velocity.y = jumpSpeed;
                 isGrounded = false;
